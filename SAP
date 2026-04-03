@@ -1,0 +1,73 @@
+ @AbapCatalog.sqlViewName: 'ZSALES_ORD_SQL'
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Sales Order View for Fiori'
+
+define view ZI_SalesOrder 
+  as select from zsales_order
+{
+    key orderid      as OrderID,
+    customername     as CustomerName,
+    @Semantics.amount.currencyCode: 'Currency' 
+    netamount        as NetAmount
+}
+
+
+
+
+
+
+
+CLASS zcl_sales_processor DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC.
+
+  PUBLIC SECTION.
+    INTERFACES if_amdp_marker_hdb.
+    TYPES: tt_sales TYPE STANDARD TABLE OF zsales_order WITH EMPTY KEY.
+    METHODS get_high_value_orders EXPORTING VALUE(et_orders) TYPE tt_sales.
+ENDCLASS.
+
+CLASS zcl_sales_processor IMPLEMENTATION.
+  METHOD get_high_value_orders BY DATABASE PROCEDURE FOR HDB LANGUAGE SQLSCRIPT 
+                               USING zsales_order.
+    et_orders = SELECT * FROM zsales_order 
+                WHERE netamount > 10000;
+  END METHOD.
+ENDCLASS.
+
+
+
+
+
+
+
+managed implementation in class zbp_i_leaverequest unique;
+strict ( 2 );
+
+define behavior for ZI_LeaveRequest 
+persistent table zleave_req_tab
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+  // Determination to default status to 'PENDING'
+  determination setStatusToPending on modify { create; }
+
+  // Validation to ensure End Date >= Start Date
+  validation validateDates on save { field start_date, end_date; create; update; }
+}
+
+
+
+
+
+
+
+ @EndUserText.label: 'Service Definition for Leave Request'
+define service ZUI_LEAVEREQUEST {
+  expose ZI_LeaveRequest as LeaveRequest;
+}
